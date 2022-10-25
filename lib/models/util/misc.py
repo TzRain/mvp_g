@@ -34,7 +34,16 @@ import mmcv
 import os.path as osp
 import shutil
 
-if float(torchvision.__version__[:3]) < 0.5:
+first_p = torchvision.__version__.find('.')
+second_p = torchvision.__version__.find('.', first_p+1)
+version_str = torchvision.__version__[:second_p]
+# torch_version =  float(torchvision.__version__[:second_p])
+if len(version_str) > 3:  # for 0.10+
+    torch_version = 1
+else:
+    torch_version =  float(version_str)
+
+if torch_version < 0.5:
     import math
     from torchvision.ops.misc import _NewEmptyTensorOp
 
@@ -69,7 +78,7 @@ if float(torchvision.__version__[:3]) < 0.5:
             int(math.floor(input.size(i + 2) * scale_factors[i]))
             for i in range(dim)
         ]
-elif float(torchvision.__version__[:3]) < 0.7:
+elif torch_version < 0.7:
     from torchvision.ops import _new_empty_tensor
     from torchvision.ops.misc import _output_size
 
@@ -557,7 +566,7 @@ def interpolate(input, size=None,
     This will eventually be supported natively by PyTorch, and this
     class can go away.
     """
-    if float(torchvision.__version__[:3]) < 0.7:
+    if torch_version < 0.7:
         if input.numel() > 0:
             return torch.nn.functional.interpolate(
                 input, size, scale_factor, mode, align_corners
@@ -565,7 +574,7 @@ def interpolate(input, size=None,
 
         output_shape = _output_size(2, input, size, scale_factor)
         output_shape = list(input.shape[:-2]) + list(output_shape)
-        if float(torchvision.__version__[:3]) < 0.5:
+        if torch_version < 0.5:
             return _NewEmptyTensorOp.apply(input, output_shape)
         return _new_empty_tensor(input, output_shape)
     else:

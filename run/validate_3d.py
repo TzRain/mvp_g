@@ -29,6 +29,10 @@ import argparse
 import os
 import pprint
 
+import _init_paths
+import dataset
+import models
+
 from core.config import config
 from core.config import update_config
 from core.function import validate_3d
@@ -37,10 +41,6 @@ import lib.utils.misc as utils
 from mmcv.runner import get_dist_info
 from torch.utils.data import DistributedSampler
 from models.util.misc import is_main_process, collect_results
-
-import _init_paths
-import dataset
-import models
 
 
 def parse_args():
