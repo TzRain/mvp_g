@@ -1,3 +1,4 @@
 data/
 models/
 output/
+.fuse_hidden*
