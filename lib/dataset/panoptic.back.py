@@ -1,3 +1,17 @@
+# Copyright 2021 Garena Online Private Limited.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 # ------------------------------------------------------------------------------
 # Copyright (c) Microsoft Corporation. All rights reserved.
 # Licensed under the MIT License.
@@ -18,11 +32,9 @@ import copy
 
 from dataset.JointsDataset import JointsDataset
 from utils.transforms import projectPoints
-from prettytable import PrettyTable
 
 
 logger = logging.getLogger(__name__)
-import time
 
 TRAIN_LIST = [
     '160422_ultimatum1',
@@ -34,23 +46,8 @@ TRAIN_LIST = [
     '160906_ian3',
     '160906_band1',
     '160906_band2',
-    '160906_band3',
+    # '160906_band3',
 ]
-TRAIN_SEQ = {
-    'seq0': TRAIN_LIST,
-    'seq1': [
-        '160422_ultimatum1',
-        '160224_haggling1',
-        '160226_haggling1',
-        '161202_haggling1',
-        '160906_ian1',
-        '160906_ian2',
-        '160906_ian3',
-        '160906_band1',
-        '160906_band2',
-    ]
-}
-
 VAL_LIST = ['160906_pizza1', '160422_haggling1', '160906_ian5', '160906_band4']
 
 JOINTS_DEF = {
@@ -69,10 +66,6 @@ JOINTS_DEF = {
     'r-hip': 12,
     'r-knee': 13,
     'r-ankle': 14,
-    # 'l-eye': 15,
-    # 'l-ear': 16,
-    # 'r-eye': 17,
-    # 'r-ear': 18,
 }
 
 LIMBS = [[0, 1],
@@ -90,20 +83,6 @@ LIMBS = [[0, 1],
          [12, 13],
          [13, 14]]
 
-CAM_LIST={
-    'seq5' : [(0, 12), (0, 6), (0, 23), (0, 13), (0, 3)],
-    'seq0' : [(0, 21), (0, 17), (0, 4), (0, 19), (0, 5)],
-    'seq1-1' : [(0, 13), (0, 17), (0, 4), (0, 19), (0, 5)],
-    'seq1-2': [(0, 6), (0, 17), (0, 4), (0, 19), (0, 5)],
-    'seq2-1' : [(0, 13), (0, 23), (0, 4), (0, 19), (0, 5)],
-    'seq2-2': [(0, 6), (0, 17), (0, 4), (0, 23), (0, 5)],
-    'seq3-1': [(0, 6), (0, 17), (0, 4), (0, 23), (0, 5)],
-    'seq3-2': [(0, 6), (0, 17), (0, 4), (0, 23), (0, 5)],
-    'seq4-1': [(0, 19), (0, 17), (0, 23), (0, 13), (0, 3)],
-    'seq4-2': [(0, 12), (0, 6), (0, 4), (0, 5), (0, 3)],
-    'seq4-1': [(0, 12), (0, 17), (0, 23), (0, 13), (0, 3)],
-    'seq4-2': [(0, 12), (0, 6), (0, 9), (0, 13), (0, 3)],
-}
 
 class Panoptic(JointsDataset):
     def __init__(self, cfg, image_set, is_train, transform=None):
@@ -112,30 +91,25 @@ class Panoptic(JointsDataset):
         self.joints_def = JOINTS_DEF
         self.limbs = LIMBS
         self.num_joints = len(JOINTS_DEF)
-        self.save_result = not(cfg.DATASET.SAVE_RESULT is None)
-        self.save_suffix = cfg.DATASET.SAVE_RESULT
-        self.data_seq = cfg.DATASET.DATA_SEQ
-        self.cam_seq = cfg.DATASET.CAM_SEQ
-        self.show_camera_detail = cfg.DATASET.CAMERA_DETAIL
+
         if self.image_set == 'train':
-            self.sequence_list = TRAIN_SEQ[self.data_seq]
+            self.sequence_list = TRAIN_LIST
             self._interval = 3
-            self.cam_list = CAM_LIST[self.cam_seq][:self.num_views]
-            # self.cam_list = list(set([(0, n) for n in range(0, 31)]) - {(0, 12), (0, 6), (0, 23), (0, 13), (0, 3)})
-            # self.cam_list.sort()
+            self.cam_list = [(0, 12), (0, 6), (0, 23), (0, 13), (0, 3)][
+                            :self.num_views]
             self.num_views = len(self.cam_list)
         elif self.image_set == 'validation':
             self.sequence_list = VAL_LIST
             self._interval = 12
-            self.cam_list = CAM_LIST[self.cam_seq][:self.num_views]
+            self.cam_list = [(0, 12), (0, 6), (0, 23), (0, 13), (0, 3)][
+                            :self.num_views]
             self.num_views = len(self.cam_list)
-            
 
-        self.db_file = 'group_{}_cam{}_{}.pkl'.\
-            format(self.image_set, self.cam_seq, self.num_views)
+        self.db_file = 'group_{}_cam{}.pkl'.\
+            format(self.image_set, self.num_views)
         self.db_file = os.path.join(self.dataset_root, self.db_file)
 
-        if False:
+        if osp.exists(self.db_file):
             info = pickle.load(open(self.db_file, 'rb'))
             assert info['sequence_list'] == self.sequence_list
             assert info['interval'] == self._interval
@@ -150,35 +124,26 @@ class Panoptic(JointsDataset):
                 'db': self.db
             }
             pickle.dump(info, open(self.db_file, 'wb'))
-        # self.db = self._get_db()
         self.db_size = len(self.db)
 
     def _get_db(self):
-        time_start = time.time()
-
         width = 1920
         height = 1080
         db = []
-        seq_count = {}
-        # all the sequence: different datasets
-        for seq in self.sequence_list: 
-            # for a specific dataset
+        for seq in self.sequence_list:
+
             cameras = self._get_cam(seq)
-            cam_num = len(cameras)
             curr_anno = osp.join(self.dataset_root,
                                  seq, 'hdPose3d_stage1_coco19')
             anno_files = sorted(glob.iglob('{:s}/*.json'.format(curr_anno)))
 
-            seq_count[seq] = 0
             for i, file in enumerate(anno_files):
                 if i % self._interval == 0:
                     with open(file) as dfile:
                         bodies = json.load(dfile)['bodies']
                     if len(bodies) == 0:
                         continue
-                    
-                    # check situation of different cameras
-                    all_people_observable = []
+
                     for k, v in cameras.items():
                         postfix = osp.basename(file).replace('body3DScene', '')
                         prefix = '{:02d}_{:02d}'.format(k[0], k[1])
@@ -231,16 +196,6 @@ class Panoptic(JointsDataset):
                                     np.reshape(
                                         joints_vis, (-1, 1)), 2, axis=1))
 
-                        all_people_observable.append(all_poses_vis)
-                        # check if there are any false
-                        # for this camera, can all the bodies be visible?
-                        # all_observed = True
-                        # for arr in all_poses_vis:
-                            # fail_pos = np.where(arr.reshape(-1)==False)
-                            # if len(fail_pos) > 0:
-                                # all_observed = False
-                                # break
-
                         if len(all_poses_3d) > 0:
                             our_cam = {}
                             our_cam['R'] = v['R']
@@ -266,32 +221,6 @@ class Panoptic(JointsDataset):
                                 'joints_2d_vis': all_poses_vis,
                                 'camera': our_cam
                             })
-                    
-                    # now we have all the cameras, all the peoples, all the joints, obsevable situation
-                    valid = True
-                    self.filter_valid_observations = False
-                    if self.filter_valid_observations:
-                        all_people_observable_arr = np.array(all_people_observable)
-                        if all_people_observable_arr.shape[-1] > 0:
-                            # For each joint, we want at least 3 observations?
-                            xy_people_joints_obnum = np.sum(all_people_observable_arr.swapaxes(0,3), -1)
-                            people_joints_obnum = xy_people_joints_obnum[0]
-                            people_joints_valid = people_joints_obnum > 2
-                            if False in people_joints_valid:
-                                # not valid!
-                                # remove the last 5
-                                valid = False
-                        else:
-                            valid = False
-
-                    if valid:
-                        seq_count[seq]=seq_count[seq]+cam_num
-                    else:
-                        db = db[:-cam_num]
-        print("Dataset result:", seq_count)
-        time_end = time.time()
-        print("Loading time:", time_end-time_start)
-
         return db
 
     def _get_cam(self, seq):
@@ -314,6 +243,14 @@ class Panoptic(JointsDataset):
                 cameras[(cam['panel'], cam['node'])] = sel_cam
         return cameras
 
+    # def loading_while(self, saving_path):
+    #     try:
+    #         temp = np.load(saving_path + '.npz')
+    #         return temp
+    #     except Exception as e:
+    #         print('loading error, retrying loading')
+    #         return None
+
     def __getitem__(self, idx):
         input, meta = [], []
         for k in range(self.num_views):
@@ -327,7 +264,6 @@ class Panoptic(JointsDataset):
 
     def evaluate(self, preds):
         eval_list = []
-        ob_ths = range(0,100,10)
         gt_num = self.db_size // self.num_views
         assert len(preds) == gt_num, 'number mismatch'
 
@@ -338,32 +274,17 @@ class Panoptic(JointsDataset):
             joints_3d = db_rec['joints_3d']
             joints_3d_vis = db_rec['joints_3d_vis']
 
-            joints_2d_vis = [self.db[i]['joints_2d_vis'] for i in range(index,index+self.num_views)]
-            joints_2d_vis_sum  = np.sum(joints_2d_vis,axis=0)[...,0]
-            joints_2d_vis_sum = np.sort(joints_2d_vis_sum,axis=1)
-            joints_2d_vis_num = []
-            for index in range(len(joints_2d_vis_sum)):
-                vis_num={}
-                for ob_th in ob_ths:
-                    vis_num[ob_th] = joints_2d_vis_sum[index,int(np.floor(self.num_joints*ob_th/100))]
-                joints_2d_vis_num.append(vis_num)
-
             if len(joints_3d) == 0:
                 continue
 
             pred = preds[i].copy()
-            
-
-            if self.save_result:
-                self.db[index]['joints_3d_voxelpose_pred'] = pred
-                
             pred = pred[pred[:, 0, 3] >= 0]
-
             for pose in pred:
                 mpjpes = []
-                for (gt, gt_vis, gt_vis_num) in zip(joints_3d, joints_3d_vis,joints_2d_vis_num):
+                for (gt, gt_vis) in zip(joints_3d, joints_3d_vis):
                     vis = gt_vis[:, 0] > 0
-                    mpjpe = np.mean(np.sqrt(np.sum((pose[vis, 0:3] - gt[vis]) ** 2, axis=-1)))
+                    mpjpe = np.mean(np.sqrt(
+                        np.sum((pose[vis, 0:3] - gt[vis]) ** 2, axis=-1)))
                     mpjpes.append(mpjpe)
                 min_gt = np.argmin(mpjpes)
                 min_mpjpe = np.min(mpjpes)
@@ -371,74 +292,24 @@ class Panoptic(JointsDataset):
                 eval_list.append({
                     "mpjpe": float(min_mpjpe),
                     "score": float(score),
-                    "gt_id": int(total_gt + min_gt),
-                    "vis_num": gt_vis_num.copy()
+                    "gt_id": int(total_gt + min_gt)
                 })
 
             total_gt += len(joints_3d)
-        
-        if self.save_result:
-            self.db_file = 'group_{}_cam{}_{}_{}.pkl'.format(self.image_set, self.cam_seq ,self.num_views, self.save_suffix)
-            self.db_file = os.path.join(self.dataset_root, self.db_file)
-            info = {
-                'sequence_list': self.sequence_list,
-                'interval': self._interval,
-                'cam_list': self.cam_list,
-                'db': self.db
-            }
-            print(f"load save_voxel_pred to {self.db_file}")
-            pickle.dump(info, open(self.db_file, 'wb'))
 
-        def calc_ap(eval_list, total_gt):
-            mpjpe_threshold = np.arange(25, 155, 25)
-            aps = []
-            recs = []
-            for t in mpjpe_threshold:
-                ap, rec = self._eval_list_to_ap(eval_list, total_gt, t)
-                aps.append(ap)
-                recs.append(rec)
-            mpjpe = self._eval_list_to_mpjpe(eval_list)
-            recall500 = self._eval_list_to_recall(eval_list, total_gt)
-            return aps, recs, mpjpe, recall500
+        mpjpe_threshold = np.arange(25, 155, 25)
+        aps = []
+        recs = []
+        for t in mpjpe_threshold:
+            ap, rec = self._eval_list_to_ap(eval_list, total_gt, t)
+            aps.append(ap)
+            recs.append(rec)
 
-        aps, recs, mpjpe, recall500 = calc_ap(eval_list, total_gt)
-     
-        if self.show_camera_detail:
-        
-            for ob_th in ob_ths:
-                eval_list_obs=[]
-                for i in range(self.num_views+1):
-                    eval_list_obs.append([])
-                for item in eval_list:
-                    eval_list_obs[item['vis_num'][ob_th]].append(item)
-                for i in range(1,self.num_views+1):
-                    if len(eval_list_obs[i]) == 0:
-                        continue
-                    gt_num = len(set([item['gt_id'] for item in eval_list_obs[i]]))
-                    aps, recs, mpjpe, recall500 = calc_ap(eval_list_obs[i],gt_num)
-                    tb = PrettyTable()
-                    mpjpe_threshold = np.arange(25, 155, 25)
-                    tb.field_names = ['Threshold/mm'] + \
-                                    [f'{i}' for i in mpjpe_threshold]
-                    tb.add_row(['AP'] + [f'{ap * 100:.2f}' for ap in aps])
-                    tb.add_row(['Recall'] + [f'{re * 100:.2f}' for re in recs])
-                    logger.info(f'camera observation rate:{100-ob_th}% camera observation num:{i} (sample num:{gt_num})')
-                    logger.info(tb)
-                    logger.info(f'MPJPE: {mpjpe:.2f}mm')
-                    logger.info(f'recall@500mm: {recall500 * 100:.2f}mm')
-
-            tb = PrettyTable()
-            mpjpe_threshold = np.arange(25, 155, 25)
-            tb.field_names = ['Threshold/mm'] + \
-                            [f'{i}' for i in mpjpe_threshold]
-            tb.add_row(['AP'] + [f'{ap * 100:.2f}' for ap in aps])
-            tb.add_row(['Recall'] + [f'{re * 100:.2f}' for re in recs])
-            logger.info(f'camera observation rate: % camera observation num:(sample num:all)')
-            logger.info(tb)
-            logger.info(f'MPJPE: {mpjpe:.2f}mm')
-            logger.info(f'recall@500mm: {recall500 * 100:.2f}mm')
-
-        return aps, recs, mpjpe, recall500
+        return \
+            aps, \
+            recs, \
+            self._eval_list_to_mpjpe(eval_list), \
+            self._eval_list_to_recall(eval_list, total_gt)
 
     @staticmethod
     def _eval_list_to_ap(eval_list, total_gt, threshold):
