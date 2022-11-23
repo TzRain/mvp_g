@@ -124,6 +124,10 @@ config.DATASET.FLIP = True
 config.DATASET.DATA_AUGMENTATION = True
 config.DATASET.CAMERA_NUM = 5
 config.DATASET.DATA_ROOT = None
+config.DATASET.SAVE_RESULT = None
+config.DATASET.DATA_SEQ = 'seq1'
+config.DATASET.CAM_SEQ = 'seq5'
+config.DATASET.CAMERA_DETAIL = False
 
 # training data augmentation
 config.DATASET.SCALE_FACTOR = 0

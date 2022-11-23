@@ -3,13 +3,6 @@ models/
 output/
 .fuse_hidden*
 
-
-data/
-models/
-output/
-.fuse_hidden*
-.fuse_hidden*
-
 !*.*
 train*
 *exp*
