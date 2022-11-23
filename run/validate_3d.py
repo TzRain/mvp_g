@@ -42,6 +42,10 @@ from mmcv.runner import get_dist_info
 from torch.utils.data import DistributedSampler
 from models.util.misc import is_main_process, collect_results
 
+import numpy as np
+from datetime import datetime
+from prettytable import PrettyTable
+
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Train keypoints network')
@@ -138,16 +142,28 @@ def main():
         preds = collect_results(preds_single, len(test_dataset))
 
         if is_main_process():
-            actor_pcp, avg_pcp, _, recall = test_loader.dataset.evaluate(preds)
-            msg = '     | Actor 1 | Actor 2 | Actor 3 | Average | \n' \
-                  ' PCP |  {pcp_1:.2f}  |  {pcp_2:.2f}  |  {pcp_3:.2f}  ' \
-                  '|  {pcp_avg:.2f}  |\t Recall@500mm: {recall:.4f}'.\
-                format(pcp_1=actor_pcp[0] * 100,
-                       pcp_2=actor_pcp[1] * 100,
-                       pcp_3=actor_pcp[2] * 100,
-                       pcp_avg=avg_pcp * 100,
-                       recall=recall)
-            logger.info(msg)
+            tb = PrettyTable()
+            mpjpe_threshold = np.arange(25, 155, 25)
+            aps, recs, mpjpe, recall500 = \
+                test_loader.dataset.evaluate(preds)
+            tb.field_names = ['Threshold/mm'] + \
+                            [f'{i}' for i in mpjpe_threshold]
+            tb.add_row(['AP'] + [f'{ap * 100:.2f}' for ap in aps])
+            tb.add_row(['Recall'] + [f'{re * 100:.2f}' for re in recs])
+            tb.add_row(['recall@500mm'] +
+                    [f'{recall500 * 100:.2f}' for re in recs])
+            logger.info(tb)
+            logger.info(f'MPJPE: {mpjpe:.2f}mm')
+            # actor_pcp, avg_pcp, _, recall = test_loader.dataset.evaluate(preds)
+            # msg = '     | Actor 1 | Actor 2 | Actor 3 | Average | \n' \
+            #       ' PCP |  {pcp_1:.2f}  |  {pcp_2:.2f}  |  {pcp_3:.2f}  ' \
+            #       '|  {pcp_avg:.2f}  |\t Recall@500mm: {recall:.4f}'.\
+            #     format(pcp_1=actor_pcp[0] * 100,
+            #            pcp_2=actor_pcp[1] * 100,
+            #            pcp_3=actor_pcp[2] * 100,
+            #            pcp_avg=avg_pcp * 100,
+            #            recall=recall)
+            # logger.info(msg)
 
 
 if __name__ == '__main__':
