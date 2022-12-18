@@ -15,11 +15,13 @@ import pickle
 import logging
 import os
 import copy
+import torch
 
 from dataset.JointsDataset import JointsDataset
 from utils.transforms import projectPoints
 from prettytable import PrettyTable
 
+from utils.vis import save_batch_image_with_joints_multi,save_ref_points_with_gt
 
 logger = logging.getLogger(__name__)
 import time
@@ -386,13 +388,6 @@ class Panoptic(JointsDataset):
         print(f"load save_voxel_pred to {self.db_file}")
         pickle.dump(info, open(self.db_file, 'wb'))
 
-        mpjpe_threshold = np.arange(25, 155, 25)
-        aps = []
-        recs = []
-        for t in mpjpe_threshold:
-            ap, rec = self._eval_list_to_ap(eval_list, total_gt, t)
-            aps.append(ap)
-            recs.append(rec)
         
         self.show_camera_detail = True
         def calc_ap(eval_list, total_gt):
@@ -409,68 +404,135 @@ class Panoptic(JointsDataset):
         
         
                 
+        self.vis_camera_details = ['10-4'] #!DEBUG         
         if self.show_camera_detail:
+            from datetime import datetime
             gt_list = []
+            pd_list = []
             ob_ths = range(0,100,10)
-            
+            now = datetime.now()
+            now_str = now.strftime("%Y%m%d-%H%M%S")
 
             def obs_num(gt_id,ob_th):
                 return int(gt_list[gt_id]['joints_2d_vis_num'][int(np.ceil(self.num_joints*ob_th/100))])
 
+            def vis_camera_detail(pd,gt,prefix):
+                os.makedirs(f'{prefix}')
+
+                for index,g in enumerate(gt):
+                    id = g['image_id']
+                    id_sub = g['image_id_sub']
+                    inputs, metas = self.__getitem__(id)
+                    for k,(input,meta) in enumerate(zip(inputs,metas)):
+                        joints = meta['joints'][id_sub]
+                        joints_vis = meta['joints_vis'][id_sub]
+                        vis_num = np.sum(joints_vis)/2
+                        save_batch_image_with_joints_multi(input[None,...],joints[None,None,...],joints_vis[None,None,...],[1],f'{prefix}/{index}_view{k}(vis_num:{vis_num:.0f}).jpg')
+
+
+                for index,g in enumerate(gt):
+                    id = g['image_id']
+                    id_sub = g['image_id_sub']
+                    inputs, metas = self.__getitem__(id)
+                    num_person = 1
+                    joints_3d = g['joints_3d']
+                    joints_3d_vis = g['joints_3d_vis']
+                    meta = {
+                        'num_person':[num_person],
+                        'joints_3d':joints_3d[None,None,...],
+                        'joints_3d_vis':joints_3d_vis[None,None,...]
+                    }
+                    preds = []
+                    mpjpe = []
+                    suffix = ''
+                    for pred in pd:
+                        if pred['gt_id']==g['gt_id']:
+                            preds.append(torch.tensor(pred['joints_3d'][:,0:3]))
+                            mpjpe.append(pred['mpjpe'])
+
+
+                    if len(preds)==0:
+                        preds.append(torch.zeros(15,3))
+
+                    preds = torch.stack(preds)
+                    preds = preds[None,...]
+                    if len(mpjpe) > 0:
+                        save_ref_points_with_gt(preds,meta,f'{prefix}/{index}_3d_{len(mpjpe)}pred_mpjpe{np.mean(mpjpe):.2f}.jpg')
+                    else:
+                        save_ref_points_with_gt(preds,meta,f'{prefix}/{index}_3d_no_pred.jpg')
+                    
+                    
+            
+            total = 0
             for i in range(gt_num):
                 index = self.num_views * i
                 db_rec = copy.deepcopy(self.db[index])
                 joints_3d = db_rec['joints_3d']
                 joints_3d_vis = db_rec['joints_3d_vis']
+                image_file = [self.db[i]['image'] for i in range(index,index+self.num_views)] 
+                joints_2d = [self.db[i]['joints_2d'] for i in range(index,index+self.num_views)]
                 joints_2d_vis = [self.db[i]['joints_2d_vis'] for i in range(index,index+self.num_views)]
                 joints_2d_vis_sum  = np.sum(joints_2d_vis,axis=0)[...,0]
                 joints_2d_vis_sum = np.sort(joints_2d_vis_sum,axis=1)
-                for (gt, gt_vis,gt_2d_vis_num) in zip(joints_3d, joints_3d_vis,joints_2d_vis_sum):
+                for sub_index, (gt, gt_vis,gt_2d_vis_num) in enumerate(zip(joints_3d, joints_3d_vis,joints_2d_vis_sum)):
                     gt_list.append({
+                        'gt_id':total,
+                        'image_file':image_file,
+                        "image_id":i,
+                        'image_id_sub':sub_index,
+                        "joints_2d":[joint_2d[sub_index] for joint_2d in joints_2d],
+                        "joints_2d_vis":[joint_2d_vis[sub_index] for joint_2d_vis in joints_2d_vis],
                         "joints_3d":gt,
                         "joints_3d_vis":gt_vis,
                         "joints_2d_vis_num":gt_2d_vis_num,
                     })
+                    total = total + 1
+                pred = preds[i].copy()
+                pred = pred[pred[:, 0, 3] >= 0]
+                for pose in pred:
+                    pd_list.append(pose)
 
             tb = PrettyTable()
             mpjpe_threshold = np.arange(25, 155, 25)
             tb.field_names = \
-                ["camera observation rate","camera observation num"] + \
+                ["camera observation rate","num","pred_num","gt_num"] + \
                 [f'AP{i}' for i in mpjpe_threshold] + \
                 [f'Recall{i}' for i in mpjpe_threshold] + \
                 ['Recall500','MPJPE']
             for ob_th in ob_ths:
-                total_gts = [0 for _ in range(0,self.num_views+1)]
-                eval_lists = [[] for _ in range(0,self.num_views+1)]
+                pd_list_sep = [[] for _ in range(0,self.num_views+1)]
+                gt_list_sep = [[] for _ in range(0,self.num_views+1)]
                 for gt_id,gt in enumerate(gt_list):
-                    total_gts[obs_num(gt_id,ob_th)] = total_gts[obs_num(gt_id,ob_th)] + 1
-                for pred in eval_list:
-                    eval_lists[obs_num(pred["gt_id"],ob_th)].append(pred)
+                    gt_list_sep[obs_num(gt_id,ob_th)].append(gt)
+                for pd_id,pred in enumerate(eval_list):
+                    pd_list_sep[obs_num(pred["gt_id"],ob_th)].append({
+                        **pred,
+                        "joints_3d":pd_list[pd_id]
+                    })
                 for i in range(1,self.num_views+1):
-                    if total_gts[i]==0:
+                    if len(gt_list_sep[i])==0:
                         continue
-                    aps, recs, mpjpe, recall500 = calc_ap(eval_lists[i], total_gts[i])
+                    aps, recs, mpjpe, recall500 = calc_ap(pd_list_sep[i], len(gt_list_sep[i]))
                     tb.add_row( 
-                        [f'{100-ob_th}%' ,f'{i} pred_num:{len(eval_lists[i])} gt_num:{total_gts[i]}'] + 
+                        [f'{100-ob_th}%' ,i, len(pd_list_sep[i]),len(gt_list_sep[i])] + 
                         [f'{ap * 100:.2f}' for ap in aps] +
                         [f'{re * 100:.2f}' for re in recs] +
                         [f'{recall500 * 100:.2f}',f'{mpjpe:.2f}']
                     )
+                    if f'{100-ob_th}-{i}' in self.vis_camera_details:
+                        prefix = f'./vis_results/{now_str}/camera_detail/{100-ob_th}-{i}/'
+                        vis_camera_detail(pd_list_sep[i],gt_list_sep[i],prefix)
+
             aps, recs, mpjpe, recall500 = calc_ap(eval_list, total_gt)
             tb.add_row(
-                [f'all' ,f'all pred_num:{len(eval_list)} gt_num:{total_gt}'] + 
+                ['all' ,'all' ,len(eval_list),total_gt] + 
                 [f'{ap * 100:.2f}' for ap in aps] +
                 [f'{re * 100:.2f}' for re in recs] +
                 [f'{recall500 * 100:.2f}',f'{mpjpe:.2f}']
             )
             logger.info(tb)
-
-
-        return \
-            aps, \
-            recs, \
-            self._eval_list_to_mpjpe(eval_list), \
-            self._eval_list_to_recall(eval_list, total_gt)
+        aps, recs, mpjpe, recall500 = calc_ap(eval_list, total_gt) 
+        return aps, recs, mpjpe, recall500
 
     @staticmethod
     def _eval_list_to_ap(eval_list, total_gt, threshold):

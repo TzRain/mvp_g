@@ -177,7 +177,7 @@ config.TEST.DETECTOR = 'fpn_dcn'
 config.TEST.DETECTOR_DIR = ''
 config.TEST.MODEL_FILE = ''
 config.TEST.HEATMAP_LOCATION_FILE = 'predicted_heatmaps.h5'
-
+config.TEST.PRED_FILE = None
 # debug
 config.DEBUG = edict()
 config.DEBUG.DEBUG = True

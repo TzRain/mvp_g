@@ -29,6 +29,8 @@ import argparse
 import os
 import pprint
 
+from datetime import datetime
+
 import _init_paths
 import dataset
 import models
@@ -135,11 +137,21 @@ def main():
     else:
         raise ValueError('Check the model file for testing!')
 
+    now = datetime.now()
+    now_str = now.strftime("%Y%m%d-%H%M%S")
+
     for thr in config.DECODER.inference_conf_thr:
-        preds_single, meta_image_files_single = validate_3d(
-            config, model, test_loader, final_output_dir, thr,
-            num_views=num_views)
-        preds = collect_results(preds_single, len(test_dataset))
+        pred_path = os.path.join(final_output_dir, f"{config.TEST.PRED_FILE}-{thr}.npy")
+        if config.TEST.PRED_FILE and os.path.isfile(pred_path):
+            preds = np.load(pred_path,allow_pickle=True)
+            logger.info(f"=> load pred_file from {pred_path}")
+        else:
+            preds_single, meta_image_files_single = validate_3d(
+                config, model, test_loader, final_output_dir, thr,
+                num_views=num_views)
+            preds = collect_results(preds_single, len(test_dataset))
+            np.save(final_output_dir+'/{}-{}.npy'.format(now_str,thr),preds)
+            logger.info(f"=> save pred_file with TEST.PRED_FILE={now_str}")
 
         if is_main_process():
             tb = PrettyTable()

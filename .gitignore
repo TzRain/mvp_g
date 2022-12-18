@@ -184,3 +184,5 @@ cython_debug/
 wandb/
 amlt/
 .amltconfig
+vis_results
+vis_results/
