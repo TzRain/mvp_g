@@ -35,7 +35,7 @@ import dataset
 import models
 
 from core.config import config
-from core.config import update_config
+from core.config import update_config, update_config_dynamic_input
 from core.function import train_3d, validate_3d
 from utils.utils import create_logger
 from utils.utils import save_checkpoint, load_checkpoint, load_checkpoint_best
@@ -74,6 +74,7 @@ def parse_args():
 
     args, rest = parser.parse_known_args()
     update_config(args.cfg)
+    update_config_dynamic_input(rest)
 
     return args
 
@@ -265,14 +266,18 @@ def main():
                     mpjpe_threshold = np.arange(25, 155, 25)
                     aps, recs, mpjpe, recall500 = \
                         test_loader.dataset.evaluate(preds)
-                    tb.field_names = ['Threshold/mm'] + \
-                                     [f'{i}' for i in mpjpe_threshold]
-                    tb.add_row(['AP'] + [f'{ap * 100:.2f}' for ap in aps])
-                    tb.add_row(['Recall'] + [f'{re * 100:.2f}' for re in recs])
-                    tb.add_row(['recall@500mm'] +
-                               [f'{recall500 * 100:.2f}' for re in recs])
+                    tb.field_names = \
+                        ["config_name"] + \
+                        [f'AP{i}' for i in mpjpe_threshold] + \
+                        [f'Recall{i}' for i in mpjpe_threshold] + \
+                        ['Recall500','MPJPE']
+                    tb.add_row( 
+                        [config.DEBUG.WANDB_NAME] + 
+                        [f'{ap * 100:.2f}' for ap in aps] +
+                        [f'{re * 100:.2f}' for re in recs] +
+                        [f'{recall500 * 100:.2f}',f'{mpjpe:.2f}']
+                    )
                     logger.info(tb)
-                    logger.info(f'MPJPE: {mpjpe:.2f}mm')
                     precision = np.mean(aps[0])
 
                 elif 'campus' in config.DATASET.TEST_DATASET \

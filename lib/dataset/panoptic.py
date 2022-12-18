@@ -93,18 +93,11 @@ LIMBS = [[0, 1],
          [13, 14]]
 
 CAM_LIST={
-    'seq5' : [(0, 12), (0, 6), (0, 23), (0, 13), (0, 3)],
-    'seq0' : [(0, 21), (0, 17), (0, 4), (0, 19), (0, 5)],
-    'seq1-1' : [(0, 13), (0, 17), (0, 4), (0, 19), (0, 5)],
-    'seq1-2': [(0, 6), (0, 17), (0, 4), (0, 19), (0, 5)],
-    'seq2-1' : [(0, 13), (0, 23), (0, 4), (0, 19), (0, 5)],
-    'seq2-2': [(0, 6), (0, 17), (0, 4), (0, 23), (0, 5)],
-    'seq3-1': [(0, 6), (0, 17), (0, 4), (0, 23), (0, 5)],
-    'seq3-2': [(0, 6), (0, 17), (0, 4), (0, 23), (0, 5)],
-    'seq4-1': [(0, 19), (0, 17), (0, 23), (0, 13), (0, 3)],
-    'seq4-2': [(0, 12), (0, 6), (0, 4), (0, 5), (0, 3)],
-    'seq4-1': [(0, 12), (0, 17), (0, 23), (0, 13), (0, 3)],
-    'seq4-2': [(0, 12), (0, 6), (0, 9), (0, 13), (0, 3)],
+    'CMU0' : [(0, 3), (0, 6),(0, 12),(0, 13), (0, 23)], # 5
+    'CMU1' : [(0, 1),(0, 2),(0, 3),(0, 4),(0, 6),(0, 7),(0, 10)],  #7
+    'CMU2' : [(0, 12), (0, 16), (0, 18), (0, 19), (0, 22), (0, 23), (0, 30)], #7
+    'CMU3' : [(0, 10), (0, 12), (0, 16), (0, 18)], #4
+    'CMU4' : [(0, 6), (0, 7), (0, 10), (0, 12), (0, 16), (0, 18), (0, 19), (0, 22), (0, 23), (0, 30)], #10
 }
 
 class Panoptic(JointsDataset):
@@ -117,20 +110,28 @@ class Panoptic(JointsDataset):
         self.save_result = not(cfg.DATASET.SAVE_RESULT is None)
         self.save_suffix = cfg.DATASET.SAVE_RESULT
         self.data_seq = cfg.DATASET.DATA_SEQ
-        self.cam_seq = cfg.DATASET.CAM_SEQ
+        self.train_cam_seq = cfg.DATASET.TRAIN_CAM_SEQ
+        self.test_cam_seq = cfg.DATASET.TEST_CAM_SEQ
         self.show_camera_detail = cfg.DATASET.CAMERA_DETAIL
+        self.cam_seq = self.test_cam_seq if self.image_set == 'validation' else self.train_cam_seq
         if self.image_set == 'train':
             self.sequence_list = TRAIN_SEQ[self.data_seq]
             self._interval = 3
-            self.cam_list = CAM_LIST[self.cam_seq][:self.num_views]
-            # self.cam_list = list(set([(0, n) for n in range(0, 31)]) - {(0, 12), (0, 6), (0, 23), (0, 13), (0, 3)})
-            # self.cam_list.sort()
-            self.num_views = len(self.cam_list)
+            if self.num_views:
+                self.cam_list = CAM_LIST[self.cam_seq][:self.num_views]
+                self.num_views = len(self.cam_list)
+            else:
+                self.cam_list = CAM_LIST[self.cam_seq]
+                self.num_views = len(self.cam_list)
         elif self.image_set == 'validation':
             self.sequence_list = VAL_LIST
             self._interval = 12
-            self.cam_list = CAM_LIST[self.cam_seq][:self.num_views]
-            self.num_views = len(self.cam_list)
+            if self.num_views:
+                self.cam_list = CAM_LIST[self.cam_seq][:self.num_views]
+                self.num_views = len(self.cam_list)
+            else:
+                self.cam_list = CAM_LIST[self.cam_seq]
+                self.num_views = len(self.cam_list)
             
 
         self.db_file = 'group_{}_cam{}_{}.pkl'.\
