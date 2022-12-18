@@ -33,6 +33,8 @@ def time_synchronized():
 
 logger = logging.getLogger(__name__)
 
+import wandb
+
 
 def train_3d(config, model, optimizer, loader, epoch,
              output_dir, device=torch.device('cuda'), num_views=5):

@@ -1,0 +1,30 @@
+{
+    // 使用 IntelliSense 了解相关属性。 
+    // 悬停以查看现有属性的描述。
+    // 欲了解更多信息，请访问: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "TEST",
+            "type": "python",
+            "request": "launch",
+            "program": "/home/v-jialzhu/miniconda3/envs/vp/lib/python3.7/site-packages/torch/distributed/launch.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "env": {"CUDA_VISIBLE_DEVICES" : "0,1"},
+            "args": [
+                "--use_env",
+                "--master_port=29580",
+                "--nproc_per_node=2",
+                "./run/validate_3d.py",
+                "--cfg", 
+                "configs/panoptic/std.yaml",
+                "GPUS=0,1",
+                "DATASET.TRAIN_CAM_SEQ=CMU1",
+                "DATASET.TEST_CAM_SEQ=CMU1",
+                "DATASET.CAMERA_NUM=0",  
+                "DEBUG.WANDB_NAME='std(CMU0) CMU1'",
+            ]
+        },
+    ]
+}

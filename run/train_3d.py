@@ -53,6 +53,7 @@ from mmcv.runner import get_dist_info
 import torch.distributed as dist
 from prettytable import PrettyTable
 
+import wandb
 
 def get_host_info():
     return '{}@{}'.format(getuser(), gethostname())
@@ -140,6 +141,12 @@ def main():
     if is_main_process():
         logger.info(pprint.pformat(args))
         logger.info(pprint.pformat(config))
+        if config.DEBUG.WANDB_KEY:
+            wandb.login(key=config.DEBUG.WANDB_KEY)
+        if config.DEBUG.WANDB_NAME:
+            wandb.init(project="mvp_g-train",name=config.DEBUG.WANDB_NAME)
+        else:
+            wandb.init(project="mvp_g-train")
 
     print('=> Loading data ..')
     normalize = transforms.Normalize(

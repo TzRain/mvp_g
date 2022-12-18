@@ -35,6 +35,8 @@ import _init_paths
 import dataset
 import models
 
+import wandb
+
 from core.config import config
 from core.config import update_config, update_config_dynamic_input
 from core.function import validate_3d
@@ -84,6 +86,12 @@ def main():
     if is_main_process():
         logger.info(pprint.pformat(args))
         logger.info(pprint.pformat(config))
+        if config.DEBUG.WANDB_KEY:
+            wandb.login(key=config.DEBUG.WANDB_KEY)
+        if config.DEBUG.WANDB_NAME:
+            wandb.init(project="mvp_g-val",name=config.DEBUG.WANDB_NAME)
+        else:
+            wandb.init(project="mvp_g-val")
 
     print('=> Loading data ..')
     normalize = transforms.Normalize(
