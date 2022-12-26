@@ -131,6 +131,7 @@ config.DATASET.TRAIN_CAM_SEQ = 'CMU0'
 config.DATASET.TEST_CAM_SEQ = 'CMU0'
 config.DATASET.SAVE_RESULT = None
 config.DATASET.CAMERA_DETAIL = False
+config.DATASET.SHUFFLE_CAM = False
 
 # training data augmentation
 config.DATASET.SCALE_FACTOR = 0

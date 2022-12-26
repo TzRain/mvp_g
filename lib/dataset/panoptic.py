@@ -113,6 +113,9 @@ class Panoptic(JointsDataset):
         self.train_cam_seq = cfg.DATASET.TRAIN_CAM_SEQ
         self.test_cam_seq = cfg.DATASET.TEST_CAM_SEQ
         self.show_camera_detail = cfg.DATASET.CAMERA_DETAIL
+        self.shuffle_cam = cfg.DATASET.SHUFFLE_CAM
+        # DEBUG
+        print(f'self.shuffle_cam is {type(self.shuffle_cam)}:{self.shuffle_cam}')
         self.cam_seq = self.test_cam_seq if self.image_set == 'validation' else self.train_cam_seq
         if self.image_set == 'train':
             self.sequence_list = TRAIN_SEQ[self.data_seq]
@@ -167,6 +170,22 @@ class Panoptic(JointsDataset):
         for seq in self.sequence_list: 
             # for a specific dataset
             cameras = self._get_cam(seq)
+
+            #! rand the cameras oreder 
+            if self.shuffle_cam:
+                from random import shuffle
+                print(f"befor shuffle{cameras.keys()}")
+                def random_dic(dicts):
+                    dict_key_ls = list(dicts.keys())
+                    shuffle(dict_key_ls)
+                    new_dic = {}
+                    for key in dict_key_ls:
+                        new_dic[key] = dicts.get(key)
+                    return new_dic
+                cameras = random_dic(cameras)
+                print(f"after shuffle{cameras.keys()}")
+
+
             cam_num = len(cameras)
             curr_anno = osp.join(self.dataset_root,
                                  seq, 'hdPose3d_stage1_coco19')
@@ -182,6 +201,8 @@ class Panoptic(JointsDataset):
                     
                     # check situation of different cameras
                     all_people_observable = []
+
+
                     for k, v in cameras.items():
                         postfix = osp.basename(file).replace('body3DScene', '')
                         prefix = '{:02d}_{:02d}'.format(k[0], k[1])
