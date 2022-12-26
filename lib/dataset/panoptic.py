@@ -114,8 +114,9 @@ class Panoptic(JointsDataset):
         self.test_cam_seq = cfg.DATASET.TEST_CAM_SEQ
         self.show_camera_detail = cfg.DATASET.CAMERA_DETAIL
         self.shuffle_cam = cfg.DATASET.SHUFFLE_CAM
+        self.reverse_cam = cfg.DATASET.REVERSE_CAM
         # DEBUG
-        print(f'self.shuffle_cam is {type(self.shuffle_cam)}:{self.shuffle_cam}')
+        print(f'self.reverse_cam is {type(self.reverse_cam)}:{self.reverse_cam}')
         self.cam_seq = self.test_cam_seq if self.image_set == 'validation' else self.train_cam_seq
         if self.image_set == 'train':
             self.sequence_list = TRAIN_SEQ[self.data_seq]
@@ -184,6 +185,18 @@ class Panoptic(JointsDataset):
                     return new_dic
                 cameras = random_dic(cameras)
                 print(f"after shuffle{cameras.keys()}")
+            
+            if self.reverse_cam:
+                print(f"befor reverse{cameras.keys()}")
+                def reverse_dic(dicts):
+                    dict_key_ls = list(dicts.keys())
+                    dict_key_ls.reverse()
+                    new_dic = {}
+                    for key in dict_key_ls:
+                        new_dic[key] = dicts.get(key)
+                    return new_dic
+                cameras = reverse_dic(cameras)
+                print(f"after reverse{cameras.keys()}")
 
 
             cam_num = len(cameras)
