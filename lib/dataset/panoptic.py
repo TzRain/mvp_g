@@ -378,19 +378,19 @@ class Panoptic(JointsDataset):
 
             total_gt += len(joints_3d)
         
-        self.db_file = 'group_{}_cam{}_{}_{}.pkl'.format(self.image_set, 'seq5' ,self.num_views, 'mvp_pred')
-        self.db_file = os.path.join(self.dataset_root, self.db_file)
-        info = {
-            'sequence_list': self.sequence_list,
-            'interval': self._interval,
-            'cam_list': self.cam_list,
-            'db': self.db
-        }
-        print(f"load save_voxel_pred to {self.db_file}")
-        pickle.dump(info, open(self.db_file, 'wb'))
+        if self.save_result:
+            self.db_file = 'group_{}_cam{}_{}_{}.pkl'.format(self.image_set, self.cam_seq ,self.num_views, self.save_suffix)
+            self.db_file = os.path.join(self.dataset_root, self.db_file)
+            info = {
+                'sequence_list': self.sequence_list,
+                'interval': self._interval,
+                'cam_list': self.cam_list,
+                'db': self.db
+            }
+            print(f"load save_voxel_pred to {self.db_file}")
+            pickle.dump(info, open(self.db_file, 'wb'))
 
         
-        self.show_camera_detail = True
         def calc_ap(eval_list, total_gt):
             mpjpe_threshold = np.arange(25, 155, 25)
             aps = []
