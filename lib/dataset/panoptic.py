@@ -389,8 +389,8 @@ class Panoptic(JointsDataset):
                 continue
 
             pred = preds[i].copy()
-
-            self.db[index]['joints_3d_mvp_pred'] = pred
+            if self.save_result:
+                self.db[index]['joints_3d_voxelpose_pred'] = pred
 
             pred = pred[pred[:, 0, 3] >= 0]
 
