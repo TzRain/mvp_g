@@ -95,13 +95,13 @@ class Panoptic(JointsDataset):
         if self.image_set == 'train':
             self.sequence_list = TRAIN_LIST
             self._interval = 3
-            self.cam_list = [(0, 12), (0, 6), (0, 23), (0, 13), (0, 3)][
+            self.cam_list = [(0, 6), (0, 7), (0, 10), (0, 12), (0, 16), (0, 18), (0, 19), (0, 22), (0, 23), (0, 30)][
                             :self.num_views]
             self.num_views = len(self.cam_list)
         elif self.image_set == 'validation':
             self.sequence_list = VAL_LIST
             self._interval = 12
-            self.cam_list = [(0, 12), (0, 6), (0, 23), (0, 13), (0, 3)][
+            self.cam_list = [(0, 6), (0, 7), (0, 10), (0, 12), (0, 16), (0, 18), (0, 19), (0, 22), (0, 23), (0, 30)][
                             :self.num_views]
             self.num_views = len(self.cam_list)
 
