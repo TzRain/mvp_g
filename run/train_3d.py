@@ -54,6 +54,7 @@ import torch.distributed as dist
 from prettytable import PrettyTable
 
 import wandb
+from datetime import datetime
 
 def get_host_info():
     return '{}@{}'.format(getuser(), gethostname())
@@ -138,6 +139,12 @@ def main():
 
     logger, final_output_dir, tb_log_dir = create_logger(
         config, args.cfg, 'train')
+    
+    now = datetime.now()
+    now_str = now.strftime("%Y%m%d-%H%M%S")
+    final_output_dir += f'/{now_str}/'
+    os.makedirs(final_output_dir, exist_ok=True)
+
     if is_main_process():
         logger.info(pprint.pformat(args))
         logger.info(pprint.pformat(config))
