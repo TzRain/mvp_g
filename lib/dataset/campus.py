@@ -81,12 +81,12 @@ class Campus(JointsDataset):
 
         if self.is_train:
             # training set
-            # self.frame_range = list(range(0, 350)) \
-            #                    + list(range(471, 650)) \
-            #                    + list(range(751, 1900))
+            self.frame_range = list(range(0, 350)) \
+                               + list(range(471, 650)) \
+                               + list(range(751, 1900))
             # augmented training set
-            self.frame_range = list(range(0, 350)) + list(range(471, 650)) + list(range(751, 1900)) + list(
-                range(471, 520)) * 2 + list(range(751, 1200)) * 2
+            # self.frame_range = list(range(0, 350)) + list(range(471, 650)) + list(range(751, 1900)) + list(
+            #     range(471, 520)) * 2 + list(range(751, 1200)) * 2
         else:
             # self.frame_range = list(range(0, 350))
             # + list(range(471, 650)) + list(range(751, 1900))

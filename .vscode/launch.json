@@ -5,25 +5,61 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "TEST",
+            "name": "FINETUNE",
             "type": "python",
             "request": "launch",
-            "program": "/home/v-jialzhu/miniconda3/envs/vp/lib/python3.7/site-packages/torch/distributed/launch.py",
+            "program": "/home/zjl/miniconda3/envs/mvp/lib/python3.7/site-packages/torch/distributed/launch.py",
             "console": "integratedTerminal",
             "justMyCode": false,
-            "env": {"CUDA_VISIBLE_DEVICES" : "0,1"},
+            "env": {
+                "CUDA_VISIBLE_DEVICES": "0,1,2,3"
+            },
             "args": [
                 "--use_env",
                 "--master_port=29580",
-                "--nproc_per_node=2",
+                "--nproc_per_node=4",
+                "./run/train_3d.py",
+                "--cfg",
+                "configs/campus/mvp_campus.yaml",
+                // "configs/shelf/mvp_shelf.yaml",
+                "GPUS=0,1,2,3",
+
+                "TRAIN.LR=0.00005"
+                // "TRAIN.FINETUNE_MODEL=../output/panoptic/multi_person_posenet_50/old/crop3.pth.tar",
+                // "TRAIN.FINETUNE_MODEL=../old/model_best.pth.tar"
+            ]
+        },
+        {
+            "name": "Python: 当前文件",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "justMyCode": true
+        },
+        {
+            "name": "TEST",
+            "type": "python",
+            "request": "launch",
+            "program": "/home/zjl/miniconda3/envs/mvp/lib/python3.7/site-packages/torch/distributed/launch.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "env": {
+                "CUDA_VISIBLE_DEVICES": "0,1,2,3"
+            },
+            "args": [
+                "--use_env",
+                "--master_port=29580",
+                "--nproc_per_node=4",
                 "./run/validate_3d.py",
-                "--cfg", 
-                "configs/panoptic/std.yaml",
-                "GPUS=0,1",
+                "--cfg",
+                "configs/panoptic/std_CMU0.yaml",
+                "GPUS=0,1,2,3",
                 "DATASET.TRAIN_CAM_SEQ=CMU1",
                 "DATASET.TEST_CAM_SEQ=CMU1",
-                "DATASET.CAMERA_NUM=0",  
-                "DEBUG.WANDB_NAME='std(CMU0) CMU1'",
+                "DATASET.CAMERA_NUM=7",
+                "DEBUG.WANDB_NAME='CMU1'",
+                "TEST.MODEL_FILE=../old/mean7.pth.tar"
             ]
         },
     ]
